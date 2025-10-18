@@ -33,7 +33,7 @@ class SecurityConfig {
           'http://localhost:3000',
           'http://localhost:3001',
           'http://localhost:5173',
-          'https://votresite.com'
+          'https://aufildessentiers.mehdikorichi.com'
         ];
         
         if (!origin) return callback(null, true);

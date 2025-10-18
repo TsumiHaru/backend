@@ -246,4 +246,27 @@ router.get('/protected',
   }
 );
 
+// 🔹 Route pour récupérer le profil de l'utilisateur connecté
+router.get('/me',
+  authService.authenticateToken.bind(authService),
+  async (req, res) => {
+    try {
+      const [rows] = await pool.query(
+        'SELECT id, name, email, role, status, created_at FROM users WHERE id = ? LIMIT 1',
+        [req.user.userId]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Utilisateur introuvable' });
+      }
+
+      res.json(rows[0]);
+    } catch (error) {
+      console.error('Erreur /me:', error);
+      res.status(500).json({ error: 'Erreur lors de la récupération du profil' });
+    }
+  }
+);
+
+
 export default router;
