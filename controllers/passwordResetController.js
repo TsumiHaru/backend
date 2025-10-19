@@ -16,21 +16,6 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log('📧 [Password Reset] Demande pour:', email);
 
-    // Vérifier le rate limiting (max 3 demandes par 1 heure par email)
-    const [rateCheckRows] = await pool.query(
-      `SELECT COUNT(*) as count FROM email_verification_tokens 
-       WHERE user_id = (SELECT id FROM users WHERE email = ?) 
-       AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
-      [email]
-    );
-
-    if (rateCheckRows[0].count >= 3) {
-      console.log('🚫 Rate limit atteint pour:', email);
-      return res.status(429).json({ 
-        message: 'Trop de demandes. Veuillez réessayer dans 1 heure.' 
-      });
-    }
-
     // Chercher l'utilisateur
     const user = await User.findByEmail(email);
     
@@ -43,6 +28,20 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log('✅ Utilisateur trouvé:', user.id, user.email);
 
+    // Vérifier s'il y a déjà un token valide (non expiré) pour cet utilisateur
+    const [existingToken] = await pool.query(
+      `SELECT expires_at FROM email_verification_tokens 
+       WHERE user_id = ? AND expires_at > NOW() LIMIT 1`,
+      [user.id]
+    );
+
+    if (existingToken.length > 0) {
+      console.log('⏱️ Token valide existe déjà, rate limit activé');
+      return res.status(429).json({ 
+        message: 'Un email de réinitialisation a déjà été envoyé récemment. Vérifiez votre boîte mail ou réessayez dans 1 heure.' 
+      });
+    }
+
     // Générer un token JWT valide 1 heure
     const resetToken = jwt.sign(
       { userId: user.id, email: user.email, type: 'password_reset' },
@@ -52,11 +51,14 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log('🔑 Token généré:', resetToken.substring(0, 30) + '...');
 
-    // Supprimer l'ancien token d'abord
-    const [deleteResult] = await pool.query('DELETE FROM email_verification_tokens WHERE user_id = ?', [user.id]);
-    console.log('🗑️ Anciens tokens supprimés:', deleteResult.affectedRows);
+    // Supprimer les anciens tokens expirés
+    const [deleteResult] = await pool.query(
+      'DELETE FROM email_verification_tokens WHERE user_id = ? AND expires_at <= NOW()',
+      [user.id]
+    );
+    console.log('🗑️ Anciens tokens expirés supprimés:', deleteResult.affectedRows);
 
-    // Puis créer le nouveau avec DATE_ADD pour éviter les problèmes de fuseau horaire
+    // Créer le nouveau token avec DATE_ADD pour éviter les problèmes de fuseau horaire
     const [insertResult] = await pool.query(
       `INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) 
        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), NOW())`,
