@@ -136,6 +136,19 @@ export class User {
   this.password = hashedPassword;
   }
 
+  // Réinitialiser le mot de passe
+async resetPassword(newPassword) {
+  const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+  const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+  await pool.query(
+    'UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?',
+    [hashedPassword, this.id]
+  );
+
+  this.password = hashedPassword;
+}
+
   // Obtenir les données publiques (sans mot de passe)
   toPublicJSON() {
     return {
