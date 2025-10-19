@@ -55,22 +55,19 @@ class AuthService {
 
   // Middleware d'authentification
   authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) {
-      return res.status(401).json({ error: 'Token d\'accès requis' });
-    }
-
-    try {
-      const user = this.verifyToken(token);
-      req.user = user;
-      next();
-    } catch (error) {
-      console.error('authenticateToken error:', error.message);
-      res.status(403).json({ error: 'Token invalide ou expiré', detail: error.message });
-    }
+  if (!token) {
+    return res.status(401).json({ message: 'Token manquant' });
   }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ message: 'Token invalide' });
+    req.user = user; // Très important : avoir l'ID dedans
+    next();
+  });
+};
 
   // Middleware de rôles
   requireRole(roles) {

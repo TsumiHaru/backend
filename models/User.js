@@ -123,6 +123,19 @@ export class User {
     return rows.map(row => new User(row));
   }
 
+  // À ajouter dans User.js si ce n'est pas déjà là
+  async changePassword(newPassword) {
+  const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+  const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+  await pool.query(
+    'UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?',
+    [hashedPassword, this.id]
+  );
+
+  this.password = hashedPassword;
+  }
+
   // Obtenir les données publiques (sans mot de passe)
   toPublicJSON() {
     return {

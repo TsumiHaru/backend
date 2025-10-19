@@ -14,6 +14,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import blogRoutes from "./routes/blog.routes.js";
 import logsRoutes from "./routes/logs.routes.js";
 import contactsRoutes from "./routes/contacts.routes.js";
+import passwordResetRoutes from "./routes/auth.routes.js";
 
 import pool from './config/db.js';
 import requireApiKey from './middleware/apiKey.js';
@@ -111,6 +112,8 @@ app.use('/api/users', usersRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/event-registrations', eventRegistrationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/password-reset', passwordResetRoutes);
+
 // Protection configurable pour /api/blog : 'public' | 'auth' | 'admin'
 const blogProtection = process.env.BLOG_PROTECTION || 'auth';
 if (blogProtection === 'public') {
@@ -135,9 +138,5 @@ app.listen(PORT, () => {
   console.log(`🔒 Environnement: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 CORS autorisé pour: ${process.env.ALLOWED_ORIGINS || 'localhost'}`);
   console.log(`📡 Endpoints disponibles:`);
-  console.log(`   - GET  /api/public/health`);
-  console.log(`   - POST /api/auth/login`);
-  console.log(`   - POST /api/auth/register`);
   console.log(`   - GET  /api/events`);
-  console.log(`   - GET  /api/users (admin)`);
 });

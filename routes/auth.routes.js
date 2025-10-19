@@ -8,6 +8,9 @@ import rateLimit from 'express-rate-limit';
 import pool from '../config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 import Joi from 'joi';
+import * as passwordResetController from '../controllers/passwordResetController.js';
+import { authenticateToken } from '../middleware/auth.js'; // pour la modification de mot de passe connecté
+
 
 const router = express.Router();
 
@@ -246,7 +249,7 @@ router.get('/protected',
   }
 );
 
-// 🔹 Route pour récupérer le profil de l'utilisateur connecté
+// Route pour récupérer le profil de l'utilisateur connecté
 router.get('/me',
   authService.authenticateToken.bind(authService),
   async (req, res) => {
@@ -267,6 +270,19 @@ router.get('/me',
     }
   }
 );
+
+// Demander un email de réinitialisation (utilisateur non connecté)
+router.post('/forgot-password', passwordResetController.requestPasswordReset);
+
+// Vérifier que le token est valide (GET depuis le lien du mail)
+router.get('/verify-reset-token/:token', passwordResetController.verifyResetToken);
+
+// Réinitialiser le mot de passe avec le token
+router.post('/reset-password', passwordResetController.resetPasswordWithToken);
+
+// Modifier son mot de passe (utilisateur connecté - depuis profil)
+router.post('/change-password', authenticateToken, passwordResetController.changePasswordAuthenticated);
+
 
 
 export default router;
