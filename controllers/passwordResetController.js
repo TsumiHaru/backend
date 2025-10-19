@@ -16,6 +16,21 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log('📧 [Password Reset] Demande pour:', email);
 
+    // Vérifier le rate limiting (max 3 demandes par 1 heure par email)
+    const [rateCheckRows] = await pool.query(
+      `SELECT COUNT(*) as count FROM email_verification_tokens 
+       WHERE user_id = (SELECT id FROM users WHERE email = ?) 
+       AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+      [email]
+    );
+
+    if (rateCheckRows[0].count >= 3) {
+      console.log('🚫 Rate limit atteint pour:', email);
+      return res.status(429).json({ 
+        message: 'Trop de demandes. Veuillez réessayer dans 1 heure.' 
+      });
+    }
+
     // Chercher l'utilisateur
     const user = await User.findByEmail(email);
     
