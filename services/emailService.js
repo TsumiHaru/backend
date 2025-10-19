@@ -132,14 +132,14 @@ class EmailService {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Au Fil des Sentiers</h1>
-            <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Réinitialisation de mot de passe</p>
+            <h1 style="color: black; margin: 0; font-size: 28px;">Au Fil des Sentiers</h1>
+            <p style="color: black; margin: 10px 0 0 0; font-size: 16px;">Réinitialisation de mot de passe</p>
           </div>
           
           <div style="padding: 30px; background: #f8f9fa;">
             <h2 style="color: #333; margin-top: 0;">Bonjour ${name} !</h2>
             
-            <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            <p style="color: black; line-height: 1.6; font-size: 16px;">
               Vous avez demandé une réinitialisation de votre mot de passe. 
               Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :
             </p>
