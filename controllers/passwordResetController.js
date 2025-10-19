@@ -34,12 +34,15 @@ export const requestPasswordReset = async (req, res) => {
     // Sauvegarder le token dans email_verification_tokens (on réutilise la table)
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
     
-    await pool.query(
-      `INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) 
-       VALUES (?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at), created_at = NOW()`,
-      [user.id, resetToken, expiresAt]
-    );
+    // Supprimer l'ancien token d'abord
+await pool.query('DELETE FROM email_verification_tokens WHERE user_id = ?', [user.id]);
+
+// Puis créer le nouveau
+await pool.query(
+  `INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) 
+   VALUES (?, ?, ?, NOW())`,
+  [user.id, resetToken, expiresAt]
+);
 
     // Envoyer l'email
     await emailService.sendPasswordResetEmail(user.email, user.name, resetToken);
