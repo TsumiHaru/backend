@@ -6,6 +6,7 @@ import { testUsers } from "./models/test-users.js";
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
+
 import eventsRoutes from "./routes/events.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import publicRoutes from "./routes/public.routes.js";
@@ -14,7 +15,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import blogRoutes from "./routes/blog.routes.js";
 import logsRoutes from "./routes/logs.routes.js";
 import contactsRoutes from "./routes/contacts.routes.js";
-import passwordResetRoutes from "./routes/auth.routes.js";
+
 
 import pool from './config/db.js';
 import requireApiKey from './middleware/apiKey.js';
@@ -112,7 +113,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/event-registrations', eventRegistrationRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/password-reset', passwordResetRoutes);
+
 
 // Protection configurable pour /api/blog : 'public' | 'auth' | 'admin'
 const blogProtection = process.env.BLOG_PROTECTION || 'auth';

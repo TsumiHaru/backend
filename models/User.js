@@ -123,7 +123,7 @@ export class User {
     return rows.map(row => new User(row));
   }
 
-  // À ajouter dans User.js si ce n'est pas déjà là
+  // Changer le mot de passe
   async changePassword(newPassword) {
   const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
   const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
