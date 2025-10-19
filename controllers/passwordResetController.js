@@ -1,4 +1,4 @@
-// controllers/passwordResetController.js
+// controllers/passwordResetController.js - VERSION DEBUG
 // Utilise la table email_verification_tokens existante pour les reset tokens
 import { User } from '../models/User.js';
 import emailService from '../services/emailService.js';
@@ -14,15 +14,19 @@ export const requestPasswordReset = async (req, res) => {
       return res.status(400).json({ message: 'Email requis' });
     }
 
+    console.log('📧 [Password Reset] Demande pour:', email);
+
     // Chercher l'utilisateur
     const user = await User.findByEmail(email);
     
     if (!user) {
-      // Pour la sécurité, on retourne quand même un succès
+      console.log('❌ Utilisateur non trouvé:', email);
       return res.status(200).json({ 
         message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' 
       });
     }
+
+    console.log('✅ Utilisateur trouvé:', user.id, user.email);
 
     // Générer un token JWT valide 1 heure
     const resetToken = jwt.sign(
@@ -31,18 +35,36 @@ export const requestPasswordReset = async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    // Sauvegarder le token dans email_verification_tokens (on réutilise la table)
+    console.log('🔑 Token généré:', resetToken.substring(0, 30) + '...');
+
+    // Sauvegarder le token dans email_verification_tokens
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
     
-    // Supprimer l'ancien token d'abord
-await pool.query('DELETE FROM email_verification_tokens WHERE user_id = ?', [user.id]);
+    console.log('⏰ Expires at:', expiresAt);
 
-// Puis créer le nouveau
-await pool.query(
-  `INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) 
-   VALUES (?, ?, ?, NOW())`,
-  [user.id, resetToken, expiresAt]
-);
+    // Supprimer l'ancien token d'abord
+    const [deleteResult] = await pool.query('DELETE FROM email_verification_tokens WHERE user_id = ?', [user.id]);
+    console.log('🗑️ Anciens tokens supprimés:', deleteResult.affectedRows);
+
+    // Puis créer le nouveau
+    const [insertResult] = await pool.query(
+      `INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) 
+       VALUES (?, ?, ?, NOW())`,
+      [user.id, resetToken, expiresAt]
+    );
+    
+    console.log('💾 Token inséré:', insertResult.insertId, 'affectedRows:', insertResult.affectedRows);
+
+    // Vérifier que le token a bien été inséré
+    const [checkRows] = await pool.query(
+      'SELECT token, expires_at FROM email_verification_tokens WHERE user_id = ? AND token = ?',
+      [user.id, resetToken]
+    );
+    
+    console.log('✔️ Vérification BD - Token trouvé:', checkRows.length > 0);
+    if (checkRows.length > 0) {
+      console.log('   expires_at en BD:', checkRows[0].expires_at);
+    }
 
     // Envoyer l'email
     await emailService.sendPasswordResetEmail(user.email, user.name, resetToken);
@@ -51,7 +73,7 @@ await pool.query(
       message: 'Email de réinitialisation envoyé avec succès.' 
     });
   } catch (error) {
-    console.error('Erreur requestPasswordReset:', error);
+    console.error('❌ Erreur requestPasswordReset:', error);
     res.status(500).json({ message: 'Erreur lors de la demande de réinitialisation.' });
   }
 };
@@ -61,6 +83,8 @@ export const verifyResetToken = async (req, res) => {
   try {
     const { token } = req.params;
 
+    console.log('🔍 [Verify Token] Vérification:', token.substring(0, 30) + '...');
+
     if (!token) {
       return res.status(400).json({ message: 'Token manquant' });
     }
@@ -69,19 +93,37 @@ export const verifyResetToken = async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('✅ JWT valide pour userId:', decoded.userId);
     } catch (jwtError) {
+      console.error('❌ JWT invalide:', jwtError.message);
       if (jwtError.name === 'TokenExpiredError') {
         return res.status(400).json({ message: 'Token expiré' });
       }
       return res.status(400).json({ message: 'Token invalide' });
     }
 
-    // Chercher le token en BD et vérifier qu'il n'a pas expiré
+    // Chercher le token en BD
     const [rows] = await pool.query(
-      `SELECT user_id FROM email_verification_tokens 
+      `SELECT user_id, expires_at FROM email_verification_tokens 
        WHERE token = ? AND expires_at > NOW()`,
       [token]
     );
+
+    console.log('🔍 Résultat BD:', rows.length, 'rows');
+    if (rows.length > 0) {
+      console.log('✅ Token trouvé en BD, expires_at:', rows[0].expires_at);
+    } else {
+      console.log('❌ Token PAS trouvé en BD ou expiré');
+      
+      // Debug: voir si le token existe mais est expiré
+      const [allRows] = await pool.query(
+        `SELECT user_id, expires_at FROM email_verification_tokens WHERE token = ?`,
+        [token]
+      );
+      if (allRows.length > 0) {
+        console.log('⚠️ Token existe en BD mais EXPIRÉ - expires_at:', allRows[0].expires_at, 'NOW:', new Date());
+      }
+    }
 
     if (rows.length === 0) {
       return res.status(400).json({ message: 'Token invalide ou expiré' });
@@ -95,7 +137,7 @@ export const verifyResetToken = async (req, res) => {
       email: user.email 
     });
   } catch (error) {
-    console.error('Erreur verifyResetToken:', error);
+    console.error('❌ Erreur verifyResetToken:', error);
     res.status(400).json({ message: 'Token invalide ou expiré' });
   }
 };
@@ -146,7 +188,7 @@ export const resetPasswordWithToken = async (req, res) => {
     }
 
     // Réinitialiser le mot de passe
-    await user.changePassword(newPassword);
+    await user.resetPassword(newPassword);
 
     // Supprimer le token (l'invalider)
     await pool.query(
@@ -158,7 +200,7 @@ export const resetPasswordWithToken = async (req, res) => {
       message: 'Mot de passe réinitialisé avec succès' 
     });
   } catch (error) {
-    console.error('Erreur resetPasswordWithToken:', error);
+    console.error('❌ Erreur resetPasswordWithToken:', error);
     res.status(500).json({ message: 'Erreur lors de la réinitialisation du mot de passe' });
   }
 };
@@ -167,7 +209,9 @@ export const resetPasswordWithToken = async (req, res) => {
 export const changePasswordAuthenticated = async (req, res) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
-    const userId = req.user.id; // De la middleware authenticateToken
+    const userId = req.user.userId;
+
+    console.log('🔐 [Change Password] Pour userId:', userId);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
@@ -184,23 +228,26 @@ export const changePasswordAuthenticated = async (req, res) => {
     // Chercher l'utilisateur
     const user = await User.findById(userId);
     if (!user) {
+      console.error('❌ Utilisateur non trouvé:', userId);
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
     // Vérifier que le mot de passe actuel est correct
     const isPasswordValid = await user.verifyPassword(currentPassword);
     if (!isPasswordValid) {
+      console.log('❌ Mot de passe actuel incorrect');
       return res.status(400).json({ message: 'Mot de passe actuel incorrect' });
     }
 
     // Changer le mot de passe
     await user.changePassword(newPassword);
 
+    console.log('✅ Mot de passe changé avec succès');
     res.status(200).json({ 
       message: 'Mot de passe modifié avec succès' 
     });
   } catch (error) {
-    console.error('Erreur changePasswordAuthenticated:', error);
+    console.error('❌ Erreur changePasswordAuthenticated:', error);
     res.status(500).json({ message: 'Erreur lors de la modification du mot de passe' });
   }
 };
