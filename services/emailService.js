@@ -131,7 +131,7 @@ class EmailService {
       subject: 'Réinitialisation de votre mot de passe - Au Fil des Sentiers',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+          <div style="background-color: seagreen; padding: 30px; text-align: center;">
             <h1 style="color: black; margin: 0; font-size: 28px;">Au Fil des Sentiers</h1>
             <p style="color: black; margin: 10px 0 0 0; font-size: 16px;">Réinitialisation de mot de passe</p>
           </div>
@@ -147,7 +147,7 @@ class EmailService {
             <div style="text-align: center; margin: 30px 0;">
               <a href="${resetUrl}" 
                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; 
+                        color: black; 
                         padding: 15px 30px; 
                         text-decoration: none; 
                         border-radius: 25px; 
