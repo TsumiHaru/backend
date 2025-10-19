@@ -29,12 +29,12 @@ class SecurityConfig {
     // 2. CORS sécurisé
     const corsOptions = {
       origin: function (origin, callback) {
-        const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-          'http://localhost:3000',
-          'http://localhost:3001',
-          'http://localhost:5173',
-          'https://aufildessentiers.mehdikorichi.com'
-        ];
+        const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'https://aufildessentiers.mehdikorichi.com'
+];
         
         if (!origin) return callback(null, true);
         
