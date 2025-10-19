@@ -1,4 +1,4 @@
-// controllers/passwordResetController.js - VERSION DEBUG
+// controllers/passwordResetController.js - CORRIGÉ (Fuseau horaire MySQL)
 // Utilise la table email_verification_tokens existante pour les reset tokens
 import { User } from '../models/User.js';
 import emailService from '../services/emailService.js';
@@ -37,20 +37,15 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log('🔑 Token généré:', resetToken.substring(0, 30) + '...');
 
-    // Sauvegarder le token dans email_verification_tokens
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
-    
-    console.log('⏰ Expires at:', expiresAt);
-
     // Supprimer l'ancien token d'abord
     const [deleteResult] = await pool.query('DELETE FROM email_verification_tokens WHERE user_id = ?', [user.id]);
     console.log('🗑️ Anciens tokens supprimés:', deleteResult.affectedRows);
 
-    // Puis créer le nouveau
+    // Puis créer le nouveau avec DATE_ADD pour éviter les problèmes de fuseau horaire
     const [insertResult] = await pool.query(
       `INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) 
-       VALUES (?, ?, ?, NOW())`,
-      [user.id, resetToken, expiresAt]
+       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), NOW())`,
+      [user.id, resetToken]
     );
     
     console.log('💾 Token inséré:', insertResult.insertId, 'affectedRows:', insertResult.affectedRows);
@@ -114,15 +109,6 @@ export const verifyResetToken = async (req, res) => {
       console.log('✅ Token trouvé en BD, expires_at:', rows[0].expires_at);
     } else {
       console.log('❌ Token PAS trouvé en BD ou expiré');
-      
-      // Debug: voir si le token existe mais est expiré
-      const [allRows] = await pool.query(
-        `SELECT user_id, expires_at FROM email_verification_tokens WHERE token = ?`,
-        [token]
-      );
-      if (allRows.length > 0) {
-        console.log('⚠️ Token existe en BD mais EXPIRÉ - expires_at:', allRows[0].expires_at, 'NOW:', new Date());
-      }
     }
 
     if (rows.length === 0) {
@@ -196,6 +182,8 @@ export const resetPasswordWithToken = async (req, res) => {
       [user.id]
     );
 
+    console.log('✅ Mot de passe réinitialisé pour userId:', user.id);
+
     res.status(200).json({ 
       message: 'Mot de passe réinitialisé avec succès' 
     });
@@ -242,7 +230,7 @@ export const changePasswordAuthenticated = async (req, res) => {
     // Changer le mot de passe
     await user.changePassword(newPassword);
 
-    console.log('✅ Mot de passe changé avec succès');
+    console.log('✅ Mot de passe changé avec succès pour userId:', userId);
     res.status(200).json({ 
       message: 'Mot de passe modifié avec succès' 
     });
