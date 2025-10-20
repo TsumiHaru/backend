@@ -75,13 +75,29 @@ router.get('/:id', async (req, res) => {
 });
 
 // Route protégée - Créer un événement
+// Route protégée - Créer un événement
 router.post('/',
+  // 1. Log après authentification
   authService.authenticateToken.bind(authService),
+  (req, res, next) => {
+    console.log('🔐 AUTH OK - User:', req.user);
+    console.log('📦 Body reçu:', JSON.stringify(req.body, null, 2));
+    next();
+  },
+  
+  // 2. Log de la validation
   SecurityConfig.validateInput(eventSchema),
+  
+  // 3. Log après validation
+  (req, res, next) => {
+    console.log('✅ VALIDATION OK');
+    next();
+  },
+  
   async (req, res) => {
     try {
-      console.log('User authentifié:', req.user); // 👈 AJOUTEZ
-      console.log('Body reçu:', req.body); // 👈 AJOUTEZ
+      console.log('🚀 Création événement...');
+      
       const eventData = {
         ...req.body,
         createdBy: req.user.userId
@@ -94,8 +110,11 @@ router.post('/',
         event: event.toPublicJSON()
       });
     } catch (error) {
-      console.error('Erreur création événement:', error);
-      res.status(500).json({ error: 'Erreur lors de la création de l\'événement' });
+      console.error('❌ Erreur création événement:', error);
+      res.status(500).json({ 
+        error: 'Erreur lors de la création de l\'événement',
+        details: error.message
+      });
     }
   }
 );
