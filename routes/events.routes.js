@@ -12,11 +12,11 @@ const router = express.Router();
 const eventSchema = Joi.object({
   title: Joi.string().min(3).max(100).required(),
   description: Joi.string().min(10).max(1000).required(),
-  date: Joi.date().iso().required(),
+  date: Joi.string().required(),
   location: Joi.string().min(3).max(200).required(),
   lat: Joi.number().min(-90).max(90).required(),
   lng: Joi.number().min(-180).max(180).required(),
-  maxParticipants: Joi.number().integer().min(1).max(1000).optional()
+  image: Joi.string().max(255).optional().default('default.jpg')
 });
 
 // Route publique - Obtenir tous les événements
@@ -74,33 +74,22 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Route protégée - Créer un événement
-// Route protégée - Créer un événement
 router.post('/',
-  // 1. Log après authentification
   authService.authenticateToken.bind(authService),
   (req, res, next) => {
-    console.log('🔐 AUTH OK - User:', req.user);
-    console.log('📦 Body reçu:', JSON.stringify(req.body, null, 2));
+    console.log('🔐 AUTH OK');
+    console.log('📦 Body:', JSON.stringify(req.body, null, 2));
     next();
   },
-  
-  // 2. Log de la validation
   SecurityConfig.validateInput(eventSchema),
-  
-  // 3. Log après validation
-  (req, res, next) => {
-    console.log('✅ VALIDATION OK');
-    next();
-  },
-  
   async (req, res) => {
     try {
-      console.log('🚀 Création événement...');
+      console.log('✅ VALIDATION OK');
       
+      // Convertir la date au bon format pour MySQL
       const eventData = {
         ...req.body,
-        createdBy: req.user.userId
+        date: new Date(req.body.date).toISOString().slice(0, 19).replace('T', ' ')
       };
       
       const event = await Event.create(eventData);
@@ -110,10 +99,10 @@ router.post('/',
         event: event.toPublicJSON()
       });
     } catch (error) {
-      console.error('❌ Erreur création événement:', error);
+      console.error('❌ Erreur:', error);
       res.status(500).json({ 
-        error: 'Erreur lors de la création de l\'événement',
-        details: error.message
+        error: 'Erreur lors de la création',
+        details: error.message 
       });
     }
   }

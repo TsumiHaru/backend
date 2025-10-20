@@ -121,24 +121,35 @@ class SecurityConfig {
 
   // Middleware de validation des données
   static validateInput(schema) {
-    return (req, res, next) => {
-      const { error } = schema.validate(req.body);
-      if (error) {
-        // Log validation details in non-production to aid debugging
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('Validation error:', error.details.map(d => d.message));
-        }
-        return res.status(400).json({
-          error: 'Données invalides',
-          details: error.details.map(d => ({
+  return (req, res, next) => {
+    console.log('🔍 DÉBUT VALIDATION');
+    console.log('📋 Schema:', schema);
+    console.log('📦 Data à valider:', JSON.stringify(req.body, null, 2));
+    
+    const { error, value } = schema.validate(req.body, { 
+      abortEarly: false,
+      stripUnknown: true 
+    });
+    
+    if (error) {
+      console.error('❌ VALIDATION ÉCHOUÉE');
+      console.error('Détails:', JSON.stringify(error.details, null, 2));
+      
+      return res.status(400).json({ 
+        error: 'Données invalides',
+        details: error.details.map(d => ({
           field: d.path.join('.'),
-          message: d.message
-          }))
-        });
-      }
-      next();
-    };
-  }
+          message: d.message,
+          value: d.context.value
+        }))
+      });
+    }
+    
+    console.log('✅ VALIDATION RÉUSSIE');
+    req.body = value;
+    next();
+  };
+}
 
   // Middleware de logging des erreurs
   static errorHandler(err, req, res, next) {
