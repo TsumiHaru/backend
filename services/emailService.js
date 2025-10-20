@@ -71,7 +71,7 @@ class EmailService {
             
             <p style="color: #666; line-height: 1.6; font-size: 14px;">
               Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br>
-              <a href="${verificationUrl}" style="color: #667eea; word-break: break-all;">${verificationUrl}</a>
+              <a href="${verificationUrl}" style="color: #2f7a3e; word-break: break-all;">${verificationUrl}</a>
             </p>
             
             <div style="background: #f6fff6; padding: 18px; border-radius: 8px; margin: 18px 0; border:1px solid #e6f3ea;">
