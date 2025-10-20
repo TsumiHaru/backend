@@ -130,7 +130,10 @@ class SecurityConfig {
         }
         return res.status(400).json({
           error: 'Données invalides',
-          details: error.details.map(d => d.message)
+          details: error.details.map(d => ({
+          field: d.path.join('.'),
+          message: d.message
+          }))
         });
       }
       next();
