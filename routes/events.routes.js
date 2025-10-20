@@ -80,6 +80,8 @@ router.post('/',
   SecurityConfig.validateInput(eventSchema),
   async (req, res) => {
     try {
+      console.log('User authentifié:', req.user); // 👈 AJOUTEZ
+      console.log('Body reçu:', req.body); // 👈 AJOUTEZ
       const eventData = {
         ...req.body,
         createdBy: req.user.userId
