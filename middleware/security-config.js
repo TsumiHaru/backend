@@ -26,30 +26,38 @@ class SecurityConfig {
       crossOriginEmbedderPolicy: false
     }));
 
-    // 2. CORS sécurisé
+    // 2. CORS sécurisé avec OPTIONS explicite
     const corsOptions = {
       origin: function (origin, callback) {
         const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'https://aufildessentiers.mehdikorichi.com'
-];
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:5173',
+          'https://aufildessentiers.mehdikorichi.com'
+        ];
         
+        // Autoriser les requêtes sans origin (Postman, curl, serveur local)
         if (!origin) return callback(null, true);
         
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
+          console.warn(`❌ CORS bloqué pour: ${origin}`);
           callback(new Error('Non autorisé par la politique CORS'));
         }
       },
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+      preflightContinue: false,
+      optionsSuccessStatus: 204
     };
     
     app.use(cors(corsOptions));
+    
+    // Gérer explicitement les requêtes OPTIONS (preflight)
+    app.options('*', cors(corsOptions));
 
     // 3. Rate limiting par endpoint
     const generalLimiter = rateLimit({
@@ -64,7 +72,7 @@ class SecurityConfig {
 
     const authLimiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 50, // Augmenté pour les tests
+      max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 50,
       message: {
         error: 'Trop de tentatives de connexion, réessayez plus tard'
       }
