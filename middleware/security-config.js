@@ -1,4 +1,3 @@
-// security-config.js - Configuration de sécurité complète
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -12,7 +11,6 @@ dotenv.config();
 
 class SecurityConfig {
   static setupSecurity(app) {
-    // 1. Helmet pour les headers de sécurité
     app.use(helmet({
       contentSecurityPolicy: {
         directives: {
@@ -26,7 +24,6 @@ class SecurityConfig {
       crossOriginEmbedderPolicy: false
     }));
 
-    // 2. CORS sécurisé
     const corsOptions = {
       origin: function (origin, callback) {
         const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [
@@ -51,7 +48,6 @@ class SecurityConfig {
     
     app.use(cors(corsOptions));
 
-    // 3. Rate limiting par endpoint
     const generalLimiter = rateLimit({
       windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
       max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000,
@@ -64,40 +60,46 @@ class SecurityConfig {
 
     const authLimiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 50, // Augmenté pour les tests
+      max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 10,
       message: {
         error: 'Trop de tentatives de connexion, réessayez plus tard'
-      }
+      },
+      standardHeaders: true,
+      legacyHeaders: false,
     });
 
-    // Rate limiting temporairement désactivé pour les tests
-    // app.use('/api/', generalLimiter);
-    // app.use('/api/login', authLimiter);
-    // app.use('/api/register', authLimiter);
+    const passwordLimiter = rateLimit({
+      windowMs: 60 * 60 * 1000,
+      max: parseInt(process.env.PASSWORD_RESET_RATE_LIMIT_MAX) || 5,
+      message: {
+        error: 'Trop de demandes, réessayez plus tard'
+      },
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
 
-    // 4. Compression des réponses
+    app.use('/api/', generalLimiter);
+    app.use('/api/auth/login', authLimiter);
+    app.use('/api/auth/register', authLimiter);
+    app.use('/api/auth/forgot-password', passwordLimiter);
+    app.use('/api/auth/resend-verification', passwordLimiter);
+
     app.use(compression());
 
-    // 5. Logging des requêtes
     if (process.env.NODE_ENV === 'production') {
       app.use(morgan('combined'));
     } else {
       app.use(morgan('dev'));
     }
 
-    // 6. Parsing sécurisé
     app.use(express.json({ 
       limit: '10mb',
-      verify: (req, res, buf) => {
-        // Vérification de la taille et du contenu si nécessaire
-      }
     }));
     app.use(express.urlencoded({ 
       extended: true, 
       limit: '10mb' 
     }));
 
-    // 7. Protection contre les attaques par déni de service
     app.use((req, res, next) => {
       const timeout = setTimeout(() => {
         res.status(408).json({ error: 'Timeout de la requête' });
@@ -111,7 +113,6 @@ class SecurityConfig {
     });
   }
 
-  // Middleware de validation des données
   static validateInput(schema) {
     return (req, res, next) => {
       const { error } = schema.validate(req.body);
@@ -129,7 +130,6 @@ class SecurityConfig {
     };
   }
 
-  // Middleware de logging des erreurs
   static errorHandler(err, req, res, next) {
     console.error(err.stack);
 
@@ -145,7 +145,6 @@ class SecurityConfig {
     }
   }
 
-  // Middleware de sanitisation
   static sanitizeInput(req, res, next) {
     const sanitize = (obj) => {
       for (let key in obj) {
@@ -167,9 +166,16 @@ class SecurityConfig {
 
     next();
   }
+
+  static rejectBotFields(req, res, next) {
+    const values = [req.body?.website, req.body?.company, req.body?.url];
+    if (values.some(value => typeof value === 'string' && value.trim().length > 0)) {
+      return res.status(400).json({ error: 'Requête invalide' });
+    }
+    next();
+  }
 }
 
-// Configuration des variables d'environnement
 class EnvironmentConfig {
   static validate() {
     const required = [
@@ -203,16 +209,17 @@ class EnvironmentConfig {
   }
 }
 
-// Schémas de validation Joi
 const userSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
-  name: Joi.string().min(2).max(50).required()
+  name: Joi.string().min(2).max(50).required(),
+  website: Joi.string().allow('').optional()
 });
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
-  password: Joi.string().required()
+  password: Joi.string().required(),
+  website: Joi.string().allow('').optional()
 });
 
 export { SecurityConfig, EnvironmentConfig, userSchema, loginSchema };

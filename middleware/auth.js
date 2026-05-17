@@ -1,4 +1,3 @@
-// auth.js - Système d'authentification complet
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -9,21 +8,18 @@ dotenv.config();
 class AuthService {
   constructor() {
     this.jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
-    this.refreshTokens = new Set(); // En production: Redis/Database
+    this.refreshTokens = new Set();
   }
 
-  // Hash du mot de passe
   async hashPassword(password) {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     return await bcrypt.hash(password, saltRounds);
   }
 
-  // Vérification du mot de passe
   async verifyPassword(password, hashedPassword) {
     return await bcrypt.compare(password, hashedPassword);
   }
 
-  // Génération des tokens
   generateTokens(user) {
     const payload = {
       userId: user.id,
@@ -44,7 +40,6 @@ class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // Vérification du token
   verifyToken(token) {
     try {
       return jwt.verify(token, this.jwtSecret);
@@ -53,7 +48,6 @@ class AuthService {
     }
   }
 
-  // Middleware d'authentification
   authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -72,7 +66,6 @@ class AuthService {
     }
   }
 
-  // Middleware de rôles
   requireRole(roles) {
     return (req, res, next) => {
       if (!roles.includes(req.user.role)) {
@@ -82,7 +75,6 @@ class AuthService {
     };
   }
 
-  // Refresh token
   refreshAccessToken(refreshToken) {
     if (!this.refreshTokens.has(refreshToken)) {
       throw new Error('Refresh token invalide');
@@ -103,17 +95,14 @@ class AuthService {
     }
   }
 
-  // Logout (blacklist le refresh token)
   logout(refreshToken) {
     this.refreshTokens.delete(refreshToken);
   }
 
-  // Génération d'API Key pour services externes
   generateApiKey() {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  // Middleware pour API Key
   validateApiKey(req, res, next) {
     const apiKey = req.headers['x-api-key'];
     
@@ -128,17 +117,14 @@ class AuthService {
     next();
   }
 
-  // Validation API Key
   isValidApiKey(apiKey) {
     const validApiKeys = process.env.VALID_API_KEYS?.split(',') || [];
     return validApiKeys.includes(apiKey);
   }
 }
 
-// Utilisation
 const authService = new AuthService();
 
-// Exporter la middleware en tant que fonction standalone
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];

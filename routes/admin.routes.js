@@ -185,20 +185,31 @@ router.post('/events',
   async (req, res) => {
     try {
       const eventData = req.body;
+      const { error, value } = createEventSchema.validate(eventData);
+
+      if (error) {
+        return res.status(400).json({
+          error: error.details.map(detail => detail.message).join(', ')
+        });
+      }
+
+      const eventDate = typeof value.date === 'string'
+        ? value.date.split('T')[0]
+        : value.date.toISOString().slice(0, 10);
       
       const [result] = await pool.query(
-        `INSERT INTO events (title, date, location, lat, lng, image, status, participants, description, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        `INSERT INTO events (title, date, location, lat, lng, image, status, participants, description) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          eventData.title,
-          eventData.date,
-          eventData.location,
-          eventData.lat,
-          eventData.lng,
-          eventData.image || 'default.jpg',
-          eventData.status || 'Ouvert',
-          eventData.participants || 0,
-          eventData.description || ''
+          value.title,
+          eventDate,
+          value.location,
+          value.lat,
+          value.lng,
+          value.image || 'default.jpg',
+          value.status || 'Ouvert',
+          value.participants || 0,
+          value.description || ''
         ]
       );
 
