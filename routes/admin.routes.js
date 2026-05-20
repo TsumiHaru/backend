@@ -15,7 +15,7 @@ const createEventSchema = Joi.object({
   location: Joi.string().min(3).max(255).required(),
   lat: Joi.number().required(),
   lng: Joi.number().required(),
-  image: Joi.string().max(255).default('default.jpg'),
+  image: Joi.string().allow('').max(255).default('/images/events/placeholder.jpg'),
   status: Joi.string().valid('Ouvert', 'Fermé', 'Complet', 'Annulé').default('Ouvert'),
   participants: Joi.number().integer().min(0).default(0),
   description: Joi.string().allow('')
@@ -192,7 +192,7 @@ router.post('/events',
           value.location,
           value.lat,
           value.lng,
-          value.image || 'default.jpg',
+          value.image || '/images/events/placeholder.jpg',
           value.status || 'Ouvert',
           value.participants || 0,
           value.description || ''
