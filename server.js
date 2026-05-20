@@ -1,5 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { SecurityConfig, EnvironmentConfig } from "./middleware/security-config.js";
 
 import authRoutes from "./routes/auth.routes.js";
@@ -19,6 +21,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 SecurityConfig.setupSecurity(app);
 
@@ -30,6 +34,10 @@ try {
 }
 
 app.use(SecurityConfig.sanitizeInput);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '30d',
+  immutable: true
+}));
 
 app.get("/", (req, res) => {
   res.json({ 

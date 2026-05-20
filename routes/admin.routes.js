@@ -1,4 +1,8 @@
 import express from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import multer from 'multer';
 import { User } from '../models/User.js';
 import { EventRegistration } from '../models/EventRegistration.js';
 import authService from '../middleware/auth.js';
@@ -8,6 +12,35 @@ import Joi from 'joi';
 const router = express.Router();
 
 const requireAdmin = authService.requireRole(['admin']);
+const uploadDir = path.resolve('uploads/events');
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const extensionByType = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp'
+};
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadDir,
+    filename: (req, file, cb) => {
+      cb(null, `${Date.now()}-${randomUUID()}${extensionByType[file.mimetype] || ''}`);
+    }
+  }),
+  limits: {
+    fileSize: 3 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (!allowedImageTypes.has(file.mimetype)) {
+      cb(new Error('Format image non accepté. Utilisez JPG, PNG ou WebP.'));
+      return;
+    }
+
+    cb(null, true);
+  }
+});
 
 const createEventSchema = Joi.object({
   title: Joi.string().min(3).max(255).required(),
@@ -207,6 +240,31 @@ router.post('/events',
       console.error('Erreur création événement:', error);
       res.status(500).json({ error: 'Erreur lors de la création de l\'événement' });
     }
+  }
+);
+
+router.post('/events/image',
+  authService.authenticateToken.bind(authService),
+  requireAdmin,
+  (req, res) => {
+    upload.single('image')(req, res, (error) => {
+      if (error) {
+        return res.status(400).json({ error: error.message || 'Image invalide' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucune image reçue' });
+      }
+
+      const publicPath = `/uploads/events/${req.file.filename}`;
+      const publicUrl = `${req.protocol}://${req.get('host')}${publicPath}`;
+
+      res.status(201).json({
+        message: 'Image envoyée avec succès',
+        image: publicUrl,
+        path: publicPath
+      });
+    });
   }
 );
 
