@@ -34,7 +34,10 @@ try {
 }
 
 app.use(SecurityConfig.sanitizeInput);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  next();
+}, express.static(path.join(__dirname, 'uploads'), {
   maxAge: '30d',
   immutable: true
 }));
