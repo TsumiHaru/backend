@@ -118,7 +118,6 @@ class SecurityConfig {
     return (req, res, next) => {
       const { error } = schema.validate(req.body);
       if (error) {
-        // Log validation details in non-production to aid debugging
         if (process.env.NODE_ENV !== 'production') {
           console.error('Validation error:', error.details.map(d => d.message));
         }

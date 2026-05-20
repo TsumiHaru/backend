@@ -42,7 +42,6 @@ router.post('/register',
       const { email, password, name } = req.body;
       
         const user = await User.create({ email, password, name, role: 'user' });
-        console.log('Utilisateur créé:', { id: user.id, email: user.email, status: user.status });
 
         if (!user.status || user.status === 'active') {
           if (process.env.NODE_ENV !== 'production') {

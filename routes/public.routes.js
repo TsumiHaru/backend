@@ -1,6 +1,7 @@
 // public.routes.js - Routes publiques
 import express from 'express';
 import authService from '../middleware/auth.js';
+import pool from '../config/db.js';
 
 const router = express.Router();
 
@@ -39,11 +40,31 @@ router.get('/info', (req, res) => {
   });
 });
 
+router.get('/platform-stats', async (req, res) => {
+  try {
+    const [eventStats] = await pool.query(`
+      SELECT COUNT(*) as total_events
+      FROM events
+    `);
+
+    const [registrationStats] = await pool.query(`
+      SELECT COUNT(*) as total_registrations
+      FROM event_registrations
+    `);
+
+    res.json({
+      events: Number(eventStats[0]?.total_events) || 0,
+      registrations: Number(registrationStats[0]?.total_registrations) || 0
+    });
+  } catch {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // Public: get minimal public user info by id
 router.get('/user/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const pool = (await import('../config/db.js')).default;
     const [rows] = await pool.query('SELECT id, name, created_at FROM users WHERE id = ? LIMIT 1', [id]);
     if (!rows || rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
     const user = rows[0];

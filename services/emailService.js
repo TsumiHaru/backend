@@ -1,4 +1,3 @@
-// emailService.js - Service d'envoi d'emails avec Infomaniak
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
@@ -9,7 +8,7 @@ class EmailService {
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'mail.infomaniak.com',
       port: process.env.SMTP_PORT || 587,
-      secure: false, // true pour 465, false pour autres ports
+      secure: false,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
@@ -20,11 +19,9 @@ class EmailService {
     });
   }
 
-  // Vérifier la configuration email
   async verifyConnection() {
     try {
       await this.transporter.verify();
-      console.log('✅ Configuration email Infomaniak validée');
       return true;
     } catch (error) {
       console.error('❌ Erreur configuration email:', error.message);
@@ -32,7 +29,6 @@ class EmailService {
     }
   }
 
-  // Envoyer un email de vérification
   async sendVerificationEmail(email, name, verificationToken) {
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify?token=${verificationToken}`;
     
@@ -44,7 +40,6 @@ class EmailService {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #2f7a3e; padding: 26px; text-align: center; border-top-left-radius:8px; border-top-right-radius:8px;">
             <h1 style="color: white; margin: 0; font-size: 26px; font-weight:700;">Au Fil des Sentiers</h1>
-            <!-- removed promotional sentence for clarity and security -->
           </div>
           
           <div style="padding: 28px; background: #ffffff; border-bottom-left-radius:8px; border-bottom-right-radius:8px; border: 1px solid #e9efe9;">
@@ -97,19 +92,9 @@ class EmailService {
     };
 
     try {
-      // Verbose log: show envelope and recipients to help debug SMTP rejections
-      try {
-        console.log('Envoi email - from:', mailOptions.from, 'to:', mailOptions.to);
-        console.log('Mail envelope (approx):', { from: mailOptions.from, to: mailOptions.to });
-      } catch (logErr) {
-        console.error('Erreur log mailOptions:', logErr);
-      }
-
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Email de vérification envoyé à:', email, 'messageId:', result.messageId);
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      // Log detailed error for debugging (includes rejected recipients info)
       console.error('❌ Erreur envoi email:', error && error.message ? error.message : error);
       if (error && error.rejected) {
         console.error('Rejected recipients:', error.rejected);
@@ -121,7 +106,6 @@ class EmailService {
     }
   }
 
-  // Envoyer un email de réinitialisation de mot de passe
   async sendPasswordResetEmail(email, name, resetToken) {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
     
@@ -172,7 +156,6 @@ class EmailService {
 
     try {
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Email de réinitialisation envoyé à:', email);
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error('❌ Erreur envoi email:', error.message);

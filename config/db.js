@@ -1,4 +1,3 @@
-// db.js
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
@@ -15,11 +14,9 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Test de connexion
 export async function testConnection() {
   try {
     const connection = await pool.getConnection();
-    console.log('✅ Connexion MySQL réussie');
     connection.release();
     return true;
   } catch (error) {

@@ -1,4 +1,3 @@
-// admin.routes.js - Routes pour l'administration
 import express from 'express';
 import { User } from '../models/User.js';
 import { EventRegistration } from '../models/EventRegistration.js';
@@ -8,10 +7,8 @@ import Joi from 'joi';
 
 const router = express.Router();
 
-// Middleware pour vérifier que l'utilisateur est admin
 const requireAdmin = authService.requireRole(['admin']);
 
-// Schémas de validation
 const createEventSchema = Joi.object({
   title: Joi.string().min(3).max(255).required(),
   date: Joi.date().required(),
@@ -28,13 +25,11 @@ const updateUserSchema = Joi.object({
   status: Joi.string().valid('pending', 'active', 'banned').required()
 });
 
-// Route pour obtenir les statistiques générales
 router.get('/stats', 
   authService.authenticateToken.bind(authService),
   requireAdmin,
   async (req, res) => {
     try {
-      // Statistiques des utilisateurs
       const [userStats] = await pool.query(`
         SELECT 
           COUNT(*) as total_users,
@@ -44,7 +39,6 @@ router.get('/stats',
         FROM users
       `);
 
-      // Statistiques des événements
       const [eventStats] = await pool.query(`
         SELECT 
           COUNT(*) as total_events,
@@ -54,7 +48,6 @@ router.get('/stats',
         FROM events
       `);
 
-      // Statistiques des inscriptions
       const [registrationStats] = await pool.query(`
         SELECT 
           COUNT(*) as total_registrations,
@@ -76,7 +69,6 @@ router.get('/stats',
   }
 );
 
-// Route pour obtenir tous les utilisateurs
 router.get('/users',
   authService.authenticateToken.bind(authService),
   requireAdmin,
@@ -98,7 +90,6 @@ router.get('/users',
 
       const [rows] = await pool.query(query, params);
       
-      // Compter le total
       let countQuery = 'SELECT COUNT(*) as total FROM users';
       let countParams = [];
       if (status) {
@@ -124,7 +115,6 @@ router.get('/users',
   }
 );
 
-// Route pour mettre à jour le statut d'un utilisateur
 router.put('/users/:userId/status',
   authService.authenticateToken.bind(authService),
   requireAdmin,
@@ -151,7 +141,6 @@ router.put('/users/:userId/status',
   }
 );
 
-// Route pour supprimer un utilisateur
 router.delete('/users/:userId',
   authService.authenticateToken.bind(authService),
   requireAdmin,
@@ -164,10 +153,8 @@ router.delete('/users/:userId',
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
       }
 
-      // Supprimer d'abord les inscriptions de l'utilisateur
       await pool.query('DELETE FROM event_registrations WHERE user_id = ?', [userId]);
       
-      // Puis supprimer l'utilisateur
       await pool.query('DELETE FROM users WHERE id = ?', [userId]);
 
       res.json({ message: 'Utilisateur supprimé avec succès' });
@@ -178,7 +165,6 @@ router.delete('/users/:userId',
   }
 );
 
-// Route pour créer un événement
 router.post('/events',
   authService.authenticateToken.bind(authService),
   requireAdmin,
@@ -224,13 +210,11 @@ router.post('/events',
   }
 );
 
-// Route pour obtenir toutes les inscriptions en attente
 router.get('/registrations/pending',
   authService.authenticateToken.bind(authService),
   requireAdmin,
   async (req, res) => {
     try {
-      // D'abord récupérer toutes les inscriptions pour debug
       const [allRows] = await pool.query(`
         SELECT 
           er.id,
@@ -249,15 +233,11 @@ router.get('/registrations/pending',
         ORDER BY er.created_at DESC
       `);
       
-      console.log('Toutes les inscriptions trouvées:', allRows.length);
-      console.log('Inscriptions:', allRows.map(r => ({ status: r.status, user: r.user_name, event: r.event_title })));
-      
-      // Filtrer pour les inscriptions en attente (adapter selon vos statuts réels)
       const pendingRows = allRows.filter(row => 
         row.status === 'pending' || row.status === 'Inscrit' || row.status === 'inscrit'
       );
       
-      res.json({ registrations: pendingRows, debug: { total: allRows.length, pending: pendingRows.length, statuts: [...new Set(allRows.map(r => r.status))] } });
+      res.json({ registrations: pendingRows });
     } catch (error) {
       console.error('Erreur récupération inscriptions:', error);
       res.status(500).json({ error: 'Erreur lors de la récupération des inscriptions' });
@@ -265,7 +245,6 @@ router.get('/registrations/pending',
   }
 );
 
-// Route pour approuver/rejeter une inscription
 router.put('/registrations/:registrationId/status',
   authService.authenticateToken.bind(authService),
   requireAdmin,
@@ -278,7 +257,6 @@ router.put('/registrations/:registrationId/status',
         return res.status(400).json({ error: 'Statut invalide' });
       }
 
-      // Mapper les anciens statuts vers les nouveaux
       const statusMap = {
         'approved': 'Présent',
         'rejected': 'Annulé'

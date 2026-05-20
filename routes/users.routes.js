@@ -1,53 +1,42 @@
-// users.routes.js - Routes pour les utilisateurs
 import express from 'express';
 import authService from '../middleware/auth.js';
-import { getUserById, testUsers } from '../models/test-users.js';
+import { User } from '../models/User.js';
 
 const router = express.Router();
 
-// Route protégée pour obtenir la liste des utilisateurs (admin seulement)
 router.get('/',
   authService.authenticateToken.bind(authService),
   authService.requireRole(['admin']),
-  (req, res) => {
-    const users = testUsers.map(user => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
-    }));
-    
-    res.json({
-      message: 'Liste des utilisateurs',
-      users
-    });
+  async (req, res) => {
+    try {
+      const users = await User.findAll(100, 0);
+      res.json({
+        message: 'Liste des utilisateurs',
+        users: users.map(user => user.toPublicJSON())
+      });
+    } catch {
+      res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
+    }
   }
 );
 
-// Route protégée pour obtenir un utilisateur spécifique
 router.get('/:id',
   authService.authenticateToken.bind(authService),
   authService.requireRole(['admin', 'moderator']),
-  (req, res) => {
-    const user = getUserById(parseInt(req.params.id));
-    
+  async (req, res) => {
+    const user = await User.findById(req.params.id);
+
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
-    
+
     res.json({
       message: 'Utilisateur trouvé',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      }
+      user: user.toPublicJSON()
     });
   }
 );
 
-// Route protégée pour modifier un utilisateur
 router.put('/:id',
   authService.authenticateToken.bind(authService),
   authService.requireRole(['admin']),
@@ -59,7 +48,6 @@ router.put('/:id',
   }
 );
 
-// Route protégée pour supprimer un utilisateur
 router.delete('/:id',
   authService.authenticateToken.bind(authService),
   authService.requireRole(['admin']),

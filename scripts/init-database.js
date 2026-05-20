@@ -1,4 +1,3 @@
-// init-database.js - Script d'initialisation de la base de données
 import pool from '../config/db.js';
 import dotenv from 'dotenv';
 
@@ -6,14 +5,9 @@ dotenv.config();
 
 const initDatabase = async () => {
   try {
-    console.log('🚀 Initialisation de la base de données...');
-    
-    // Test de connexion
     const connection = await pool.getConnection();
-    console.log('✅ Connexion à la base de données réussie');
     connection.release();
 
-    // Créer la table users (schema standardisé : status + email_verified_at)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -30,9 +24,7 @@ const initDatabase = async () => {
         INDEX idx_status (status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ Table users créée');
 
-    // Créer la table events
     await pool.query(`
       CREATE TABLE IF NOT EXISTS events (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -55,9 +47,7 @@ const initDatabase = async () => {
         INDEX idx_is_active (is_active)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ Table events créée');
 
-    // Créer la table event_participants
     await pool.query(`
       CREATE TABLE IF NOT EXISTS event_participants (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,32 +61,30 @@ const initDatabase = async () => {
         INDEX idx_user_id (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ Table event_participants créée');
 
-    // Insérer un utilisateur admin par défaut
     const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash('admin123', 12);
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
     
-    const [existingAdmin] = await pool.query(
-      'SELECT id FROM users WHERE email = ?',
-      ['admin@aufildessentiers.com']
-    );
+    if (adminEmail && adminPassword) {
+      const hashedPassword = await bcrypt.hash(adminPassword, 12);
+      const [existingAdmin] = await pool.query(
+        'SELECT id FROM users WHERE email = ?',
+        [adminEmail]
+      );
 
-    if (existingAdmin.length === 0) {
-      await pool.query(`
-        INSERT INTO users (email, password, name, role, status) 
-        VALUES (?, ?, ?, ?, ?)
-      `, ['admin@aufildessentiers.com', hashedPassword, 'Administrateur', 'admin', 'active']);
-      console.log('✅ Utilisateur admin créé (admin@aufildessentiers.com / admin123)');
-    } else {
-      console.log('ℹ️ Utilisateur admin déjà existant');
+      if (existingAdmin.length === 0) {
+        await pool.query(`
+          INSERT INTO users (email, password, name, role, status)
+          VALUES (?, ?, ?, ?, ?)
+        `, [adminEmail, hashedPassword, 'Administrateur', 'admin', 'active']);
+      }
     }
 
-    // Insérer quelques événements d'exemple
     const [existingEvents] = await pool.query('SELECT COUNT(*) as count FROM events');
     
     if (existingEvents[0].count === 0) {
-      const [adminUser] = await pool.query('SELECT id FROM users WHERE email = ?', ['admin@aufildessentiers.com']);
+      const [adminUser] = await pool.query('SELECT id FROM users WHERE role = ? ORDER BY id ASC LIMIT 1', ['admin']);
       
       if (adminUser.length > 0) {
         const sampleEvents = [
@@ -142,13 +130,9 @@ const initDatabase = async () => {
           ]);
         }
         
-        console.log('✅ Événements d\'exemple créés');
       }
-    } else {
-      console.log('ℹ️ Événements déjà existants');
     }
 
-    // Créer la table blog_articles
     await pool.query(`
       CREATE TABLE IF NOT EXISTS blog_articles (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -163,9 +147,7 @@ const initDatabase = async () => {
         INDEX idx_published_at (published_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ Table blog_articles créée');
 
-    // Insérer quelques articles d'exemple si la table est vide
     const [existingArticles] = await pool.query('SELECT COUNT(*) as count FROM blog_articles');
     if (existingArticles[0].count === 0) {
       const sampleArticles = [
@@ -201,17 +183,7 @@ const initDatabase = async () => {
           [art.title, art.slug, art.excerpt, art.content, art.author, art.published_at]
         );
       }
-      console.log('✅ Articles d\'exemple créés dans blog_articles');
-    } else {
-      console.log('ℹ️ Articles de blog déjà existants');
     }
-
-    console.log('🎉 Base de données initialisée avec succès !');
-    console.log('\n📋 Informations de connexion :');
-    console.log('   Admin: admin@aufildessentiers.com / admin123');
-    console.log('   Base de données: ' + process.env.DB_NAME);
-    console.log('   Host: ' + process.env.DB_HOST);
-    
   } catch (error) {
     console.error('❌ Erreur lors de l\'initialisation:', error.message);
     throw error;
@@ -220,11 +192,9 @@ const initDatabase = async () => {
   }
 };
 
-// Exécuter le script si appelé directement
 if (import.meta.url === `file://${process.argv[1]}`) {
   initDatabase()
     .then(() => {
-      console.log('✅ Script terminé avec succès');
       process.exit(0);
     })
     .catch((error) => {
