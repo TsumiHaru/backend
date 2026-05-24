@@ -70,7 +70,7 @@ class EmailService {
             </p>
             
             <div style="background: #f6fff6; padding: 18px; border-radius: 8px; margin: 18px 0; border:1px solid #e6f3ea;">
-              <h3 style="color: #2f7a3e; margin-top: 0;">🎯 Que pouvez-vous faire une fois votre compte vérifié ?</h3>
+              <h3 style="color: #2f7a3e; margin-top: 0;">Une fois votre compte vérifié</h3>
               <ul style="color: #666; line-height: 1.6;">
                 <li>Découvrir les événements de randonnée près de chez vous</li>
                 <li>Rejoindre des groupes de randonneurs passionnés</li>
